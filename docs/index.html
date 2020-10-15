@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Slides</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif', 'Helvetica'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz', 'Gill Sans';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono', 'Consolas', 'Courier New'; }
+      img { max-width: 500px; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+<h1>refined</h1>
+
+Mark de Jong
+
+---
+
+# whoami?
+
+<img src="http://vectos.net/img/logo.png" align="right" />
+
+## Mark de Jong
+- Freelance software consultant
+- Functional programming enthusiast
+
+### Website
+[http://vectos.net](http://vectos.net)
+
+---
+
+# Motivation for refined
+
+```scala
+case class BunchOfPrimitives(
+    id: UUID,
+    firstName: String,
+    surname: String,
+    phoneNumber: String,
+    email: String,
+    depotCode: String,
+    numberOfCats: Int
+)
+```
+
+---
+
+# Motivation for refined
+
+- Easy mix arguments
+- No constraints on the primitive types
+
+---
+
+# How can we do better?
+
+Let's start with some imports
+
+```scala
+scalaVersion := "2.13.1"
+
+libraryDependencies += "eu.timepit" %% "refined" % "0.9.17"
+```
+
+```scala
+import java.util.UUID
+import eu.timepit.refined._
+import eu.timepit.refined.api._
+import eu.timepit.refined.auto._
+import eu.timepit.refined.generic._
+import eu.timepit.refined.char._
+import eu.timepit.refined.boolean._
+import eu.timepit.refined.collection._
+import eu.timepit.refined.numeric._
+import eu.timepit.refined.string._
+import eu.timepit.refined.types.numeric._
+import eu.timepit.refined.types.string._
+import shapeless._
+```
+
+---
+
+class: center, middle
+
+<h1>Refine our primitives</h1>
+
+---
+
+# How can we do better?
+
+Lets constraint a integer to be positive at compile time
+
+```scala
+val posInt: PosInt = 8
+// posInt: PosInt = 8
+```
+
+```scala
+val posIntFail: PosInt = -1
+// error: Predicate failed: (-1 > 0).
+// val posIntFail: PosInt = -1
+//                          ^
+```
+
+---
+
+# How can we do better?
+
+Or define a string to be non-empty at compile time
+
+```scala
+val nonEmptyString: NonEmptyString = "Test"
+// nonEmptyString: NonEmptyString = Test
+```
+
+```scala
+val nonEmptyStringFail: NonEmptyString = ""
+// error: Predicate isEmpty() did not fail.
+// val nonEmptyStringFail: NonEmptyString = ""
+//                                          ^^
+```
+
+---
+
+# Runtime validation
+
+We can use `refineV` to get runtime validation
+
+```scala
+refineV[NonEmpty]("")
+// res2: Either[String, Refined[String, NonEmpty]] = Left(
+//   value = "Predicate isEmpty() did not fail."
+// )
+```
+
+---
+
+# Built in type aliases
+
+* `String Refined NonEmpty` is defined as `NonEmptyString`
+* `Int Refined Positive` is defined as `PosInt`
+* `Int Refined Negative` is defined as `NegInt`
+
+---
+
+# Refined and type literals
+
+> `Refined[R, P]` is used as a infix type
+
+* Where `R` is the _primitive type_
+* Where `P` is the **predicate**
+
+Predicates can contain primitive type literal like a `Int` or `String`.
+
+In scala 2.11 and 2.12 there is _no_ type literals
+- To make this work you need to write `W."1".T`
+- In scala 2.13+ you can write just `1` in a type
+
+You can also use this for [sized collections](https://github.com/travisbrown/sized)
+
+---
+
+# Built in numeric predicates
+
+[`numeric`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/numeric.scala)
+
+* `Less[N]`: checks if a numeric value is less than `N`
+* `Greater[N]`: checks if a numeric value is greater than `N`
+* `Positive`: checks if a numeric value is greater than zero
+* `Negative`: checks if a numeric value is less than zero
+* `Interval.Open[L, H]`: checks if a numeric value is in the interval (`L`, `H`)
+* `Interval.OpenClosed[L, H]`: checks if a numeric value is in the interval (`L`, `H`]
+* `Interval.ClosedOpen[L, H]`: checks if a numeric value is in the interval [`L`, `H`)
+* `Interval.Closed[L, H]`: checks if a numeric value is in the interval [`L`, `H`]
+---
+
+# Built in numeric predicates examples
+
+```scala
+val intervalOpen: Int Refined Interval.Open[1, 10] = 2
+// intervalOpen: Refined[Int, Interval.Open[1, 10]] = 2
+val greater: Int Refined Greater[3] = 4
+// greater: Refined[Int, Greater[3]] = 4
+```
+
+```scala
+val intervalOpenFail: Int Refined Interval.Open[1, 10] = 1
+// error: Left predicate of ((1 > 1) && (1 < 10)) failed: Predicate failed: (1 > 1).
+// val intervalOpenFail: Int Refined Interval.Open[1, 10] = 1
+//                                                          ^
+```
+```scala
+val greaterFail: Int Refined Greater[3] = 2
+// error: Predicate failed: (2 > 3).
+// val greaterFail: Int Refined Greater[3] = 2
+//                                           ^
+```
+---
+
+# Built in string predicates
+
+[`string`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/string.scala)
+
+* `EndsWith[S]`: checks if a `String` ends with the suffix `S`
+* `IPv4`: checks if a `String` is a valid IPv4
+* `IPv6`: checks if a `String` is a valid IPv6
+* `MatchesRegex[S]`: checks if a `String` matches the regular expression `S`
+* `Regex`: checks if a `String` is a valid regular expression
+* `StartsWith[S]`: checks if a `String` starts with the prefix `S`
+* `Uri`: checks if a `String` is a valid URI
+* `Url`: checks if a `String` is a valid URL
+* `Xml`: checks if a `String` is well-formed XML
+* `XPath`: checks if a `String` is a valid XPath expression
+---
+
+# Built in string predicates examples
+
+```scala
+val endsWith: String Refined EndsWith["test"] = "Testtest"
+// endsWith: Refined[String, EndsWith[test]] = Testtest
+val ipv4: String Refined IPv4 = "212.22.33.1"
+// ipv4: Refined[String, IPv4] = 212.22.33.1
+```
+
+```scala
+val endsWithFail: String Refined EndsWith["test"] = "Tester"
+// error: Predicate failed: "Tester".endsWith("test").
+// val endsWithFail: String Refined EndsWith["test"] = "Tester"
+//                                                     ^^^^^^^^
+```
+```scala
+val ipv4Fail: String Refined IPv4 = "212.22.33.288"
+// error: Predicate failed: 212.22.33.288 is a valid IPv4.
+// val ipv4Fail: String Refined IPv4 = "212.22.33.288"
+//                                     ^^^^^^^^^^^^^^^
+```
+---
+
+# Built in predicates
+
+[`collection`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/collection.scala)
+
+* `Empty`: checks if an `Iterable` is empty
+* `NonEmpty`: checks if an `Iterable` is not empty
+* `Forall[P]`: checks if the predicate `P` holds for all elements of an `Iterable`
+* `Exists[P]`: checks if the predicate `P` holds for some elements of an `Iterable`
+* `Size[P]`: checks if the size of an `Iterable` satisfies the predicate `P`
+* `MinSize[N]`: checks if the size of an `Iterable` is greater than or equal to `N`
+* `MaxSize[N]`: checks if the size of an `Iterable` is less than or equal to `N`
+---
+
+# Built in collection predicates examples
+
+```scala
+refineV[Empty](List.empty[String])
+// res7: Either[String, Refined[List[String], Empty]] = Right(value = List())
+refineV[NonEmpty](List("test"))
+// res8: Either[String, Refined[List[String], NonEmpty]] = Right(
+//   value = List(test)
+// )
+refineV[Forall[NonEmpty]](List("test"))
+// res9: Either[String, Refined[List[String], Forall[NonEmpty]]] = Right(
+//   value = List(test)
+// )
+```
+
+```scala
+refineV[Empty](List("test"))
+// res10: Either[String, Refined[List[String], Empty]] = Left(
+//   value = "Predicate failed: isEmpty(List(test))."
+// )
+refineV[NonEmpty](List.empty[String])
+// res11: Either[String, Refined[List[String], NonEmpty]] = Left(
+//   value = "Predicate isEmpty(List()) did not fail."
+// )
+refineV[Forall[NonEmpty]](List(""))
+// res12: Either[String, Refined[List[String], Forall[NonEmpty]]] = Left(
+//   value = "Predicate failed: (!isEmpty())."
+// )
+```
+---
+
+# Built in predicates
+
+[`boolean`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/boolean.scala)
+
+* `Not[P]`: negation of the predicate `P`
+* `And[A, B]`: conjunction of the predicates `A` and `B`
+* `Or[A, B]`: disjunction of the predicates `A` and `B`
+* `Xor[A, B]`: exclusive disjunction of the predicates `A` and `B`
+* `Nand[A, B]`: negated conjunction of the predicates `A` and `B`
+* `AnyOf[PS]`: disjunction of all predicates in `PS`
+
+---
+
+# Built in boolean predicates examples
+
+```scala
+refineV[NonEmpty And Forall[NonEmpty]](List("test"))
+// res13: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Right(
+//   value = List(test)
+// )
+refineV[AnyOf[Digit :: Letter :: HNil]]('c')
+// res14: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Right(
+//   value = c
+// )
+```
+
+```scala
+refineV[NonEmpty And Forall[NonEmpty]](List.empty[String])
+// res15: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Left(
+//   value = "Left predicate of (!isEmpty(List()) && ()) failed: Predicate isEmpty(List()) did not fail."
+// )
+refineV[AnyOf[Digit :: Letter :: HNil]]('#')
+// res16: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Left(
+//   value = "Predicate failed: (isDigit('#') || isLetter('#') || false)."
+// )
+```
+---
+
+# Let's refine the types
+
+Let's create some type aliases
+
+```scala
+type Code = String Refined Size[Equal[3]]
+type PhoneNumber = String Refined MatchesRegex["([0-9]{10})"]
+type Email = String Refined MatchesRegex["^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$"]
+```
+
+---
+
+# Reviewed case class
+
+```scala
+case class User(
+    id: UUID,
+    firstName: NonEmptyString,
+    surname: NonEmptyString,
+    phoneNumber: PhoneNumber,
+    email: Email,
+    depotCode: Code,
+    numberOfCats: PosInt
+)
+```
+---
+
+# Integration modules available
+
+For popular JSON, CSV and database libraries!
+
+* [argonaut-refined](https://github.com/alexarchambault/argonaut-shapeless)
+* [circe-refined](https://github.com/circe/circe)
+* [doobie-refined](https://github.com/tpolecat/doobie)
+* [kantan.csv-refined](https://nrinaudo.github.io/kantan.csv/refined.html)
+* [play-refined](https://github.com/kwark/play-refined)
+* [slick-refined](https://github.com/kwark/slick-refined)
+
+---
+
+# Custom predicates
+
+```scala
+import eu.timepit.refined.api.Validate
+import org.iban4j.Iban
+
+case class IbanCode()
+
+object IbanCode {
+  implicit val ibanCodeValidate: Validate[String, IbanCode] =
+    Validate.fromPartial(str => Iban.valueOf(str), "IBAN", IbanCode())
+}
+```
+
+```scala
+refineV[IbanCode]("NL91ABNA0417164300")
+// res17: Either[String, Refined[String, IbanCode]] = Right(
+//   value = NL91ABNA0417164300
+// )
+refineV[IbanCode]("")
+// res18: Either[String, Refined[String, IbanCode]] = Left(
+//   value = "IBAN predicate failed: Empty string can't be a valid Iban."
+// )
+```
+
+---
+
+# Fin
+
+### Slides
+[http://fristi.github.com/refined-deck](http://fristi.github.com/refined-deck)
+
+### Libraries mentioned
+- refined at [https://github.com/fthomas/refined](https://github.com/fthomas/refined)
+
+ </textarea>
+    <script src="/remark-latest.min.js"></script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
