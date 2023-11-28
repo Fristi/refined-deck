@@ -1,7 +1,7 @@
 val refinedVersion        = "0.9.17"
 val catsVersion           = "2.2.0"
 
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.11"
 
 libraryDependencies ++= Seq(
   "org.iban4j"         % "iban4j"              % "3.2.1",

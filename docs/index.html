@@ -28,7 +28,7 @@ Mark de Jong
 
 ---
 
-# whoami?
+# /whoami
 
 <img src="http://vectos.net/img/logo.png" align="right" />
 
@@ -40,11 +40,28 @@ Mark de Jong
 [http://vectos.net](http://vectos.net)
 
 ---
+class: center, middle
+
+<h1>Refined taste?</h1>
+
+![img](https://media.giphy.com/media/l0CLUNQQETnPhfVaU/giphy.gif)
+
+---
+
+class: center, middle
+
+<h1>No.</h1>
+
+Types ofcourse!
+
+---
 
 # Motivation for refined
 
+Imagine this typical `Person` data structure
+
 ```scala
-case class BunchOfPrimitives(
+final case class Person(
     id: UUID,
     firstName: String,
     surname: String,
@@ -59,20 +76,28 @@ case class BunchOfPrimitives(
 
 # Motivation for refined
 
-- Easy mix arguments
-- No constraints on the primitive types
+- Integrity: make sure data is correct
+- Security: you could base64 encode a DVD in a `String`
+- Correctness: lower the input domain for functions
+
 
 ---
 
 # How can we do better?
 
-Let's start with some imports
+Some literal Scala a head!
+
+## sbt setup
 
 ```scala
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.11"
 
 libraryDependencies += "eu.timepit" %% "refined" % "0.9.17"
 ```
+
+---
+
+# Imports, make sure you remember them!
 
 ```scala
 import java.util.UUID
@@ -98,9 +123,51 @@ class: center, middle
 
 ---
 
+# Refined and type literals
+
+```scala
+Refined[R, P]
+``` 
+
+* Is used as a infix type
+* Where `R` is the **primitive type**
+* Where `P` is the **predicate**
+
+Predicates can contain primitive type literal like a `Int` or `String`
+
+```scala
+type GreaterEightPredicate = Greater[8]
+type GreaterEight = String Refined GreaterEightPredicate
+```
+
+In scala 2.12.x there is _no_ type literals
+- To make this work you need to write `W."1".T`
+- In scala 2.13.x and 3.x you can write just `1` in a type
+
+---
+
+# Built in type aliases
+
+Let's start simple
+
+```scala
+type NonEmptyString = String Refined NonEmpty
+```
+
+```scala
+type PosInt = Int Refined Positive
+```
+
+```scala
+type NegInt = Int Refined Negative
+```
+
+---
+
+
 # How can we do better?
 
-Lets constraint a integer to be positive at compile time
+Lets constrain a integer to be positive at **compile time**
 
 ```scala
 val posInt: PosInt = 8
@@ -111,14 +178,14 @@ val posInt: PosInt = 8
 val posIntFail: PosInt = -1
 // error: Predicate failed: (-1 > 0).
 // val posIntFail: PosInt = -1
-//                          ^
+//                          ^^
 ```
 
 ---
 
 # How can we do better?
 
-Or define a string to be non-empty at compile time
+Or define a string to be non-empty at **compile time**
 
 ```scala
 val nonEmptyString: NonEmptyString = "Test"
@@ -136,7 +203,7 @@ val nonEmptyStringFail: NonEmptyString = ""
 
 # Runtime validation
 
-We can use `refineV` to get runtime validation
+We can use `refineV` to get **runtime** validation in Scala 2.x
 
 ```scala
 refineV[NonEmpty]("")
@@ -147,43 +214,24 @@ refineV[NonEmpty]("")
 
 ---
 
-# Built in type aliases
-
-* `String Refined NonEmpty` is defined as `NonEmptyString`
-* `Int Refined Positive` is defined as `PosInt`
-* `Int Refined Negative` is defined as `NegInt`
-
----
-
-# Refined and type literals
-
-> `Refined[R, P]` is used as a infix type
-
-* Where `R` is the _primitive type_
-* Where `P` is the **predicate**
-
-Predicates can contain primitive type literal like a `Int` or `String`.
-
-In scala 2.11 and 2.12 there is _no_ type literals
-- To make this work you need to write `W."1".T`
-- In scala 2.13+ you can write just `1` in a type
-
-You can also use this for [sized collections](https://github.com/travisbrown/sized)
-
----
-
 # Built in numeric predicates
 
 [`numeric`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/numeric.scala)
 
-* `Less[N]`: checks if a numeric value is less than `N`
-* `Greater[N]`: checks if a numeric value is greater than `N`
-* `Positive`: checks if a numeric value is greater than zero
-* `Negative`: checks if a numeric value is less than zero
-* `Interval.Open[L, H]`: checks if a numeric value is in the interval (`L`, `H`)
-* `Interval.OpenClosed[L, H]`: checks if a numeric value is in the interval (`L`, `H`]
-* `Interval.ClosedOpen[L, H]`: checks if a numeric value is in the interval [`L`, `H`)
-* `Interval.Closed[L, H]`: checks if a numeric value is in the interval [`L`, `H`]
+## Comparison operators 
+
+* `Less[N]`
+* `Greater[N]`
+* `Positive`
+* `Negative`
+
+## Interval / ranges
+
+* `Interval.Open[L, H]`
+* `Interval.OpenClosed[L, H]`
+* `Interval.ClosedOpen[L, H]`
+* `Interval.Closed[L, H]`
+
 ---
 
 # Built in numeric predicates examples
@@ -191,9 +239,16 @@ You can also use this for [sized collections](https://github.com/travisbrown/siz
 ```scala
 val intervalOpen: Int Refined Interval.Open[1, 10] = 2
 // intervalOpen: Refined[Int, Interval.Open[1, 10]] = 2
+```
+
+```scala
 val greater: Int Refined Greater[3] = 4
 // greater: Refined[Int, Greater[3]] = 4
 ```
+
+---
+
+# Built in numeric predicates examples
 
 ```scala
 val intervalOpenFail: Int Refined Interval.Open[1, 10] = 1
@@ -201,6 +256,7 @@ val intervalOpenFail: Int Refined Interval.Open[1, 10] = 1
 // val intervalOpenFail: Int Refined Interval.Open[1, 10] = 1
 //                                                          ^
 ```
+
 ```scala
 val greaterFail: Int Refined Greater[3] = 2
 // error: Predicate failed: (2 > 3).
@@ -213,16 +269,13 @@ val greaterFail: Int Refined Greater[3] = 2
 
 [`string`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/string.scala)
 
-* `EndsWith[S]`: checks if a `String` ends with the suffix `S`
-* `IPv4`: checks if a `String` is a valid IPv4
-* `IPv6`: checks if a `String` is a valid IPv6
-* `MatchesRegex[S]`: checks if a `String` matches the regular expression `S`
-* `Regex`: checks if a `String` is a valid regular expression
-* `StartsWith[S]`: checks if a `String` starts with the prefix `S`
-* `Uri`: checks if a `String` is a valid URI
-* `Url`: checks if a `String` is a valid URL
-* `Xml`: checks if a `String` is well-formed XML
-* `XPath`: checks if a `String` is a valid XPath expression
+## Matching
+
+Support for predicates like `StartsWith[S]`, `MatchesRegex[S]`, `EndsWith[S]`
+
+## Formats 
+
+There is support for `Uri`, `Url`, `Xml`, `XPath`, `Regex`, `JsonPath`, `IPv4`, `IPv6`
 ---
 
 # Built in string predicates examples
@@ -230,9 +283,16 @@ val greaterFail: Int Refined Greater[3] = 2
 ```scala
 val endsWith: String Refined EndsWith["test"] = "Testtest"
 // endsWith: Refined[String, EndsWith[test]] = Testtest
+```
+
+```scala
 val ipv4: String Refined IPv4 = "212.22.33.1"
 // ipv4: Refined[String, IPv4] = 212.22.33.1
 ```
+
+---
+
+# Built in string predicates examples
 
 ```scala
 val endsWithFail: String Refined EndsWith["test"] = "Tester"
@@ -240,6 +300,7 @@ val endsWithFail: String Refined EndsWith["test"] = "Tester"
 // val endsWithFail: String Refined EndsWith["test"] = "Tester"
 //                                                     ^^^^^^^^
 ```
+
 ```scala
 val ipv4Fail: String Refined IPv4 = "212.22.33.288"
 // error: Predicate failed: 212.22.33.288 is a valid IPv4.
@@ -252,56 +313,60 @@ val ipv4Fail: String Refined IPv4 = "212.22.33.288"
 
 [`collection`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/collection.scala)
 
-* `Empty`: checks if an `Iterable` is empty
-* `NonEmpty`: checks if an `Iterable` is not empty
-* `Forall[P]`: checks if the predicate `P` holds for all elements of an `Iterable`
-* `Exists[P]`: checks if the predicate `P` holds for some elements of an `Iterable`
-* `Size[P]`: checks if the size of an `Iterable` satisfies the predicate `P`
-* `MinSize[N]`: checks if the size of an `Iterable` is greater than or equal to `N`
-* `MaxSize[N]`: checks if the size of an `Iterable` is less than or equal to `N`
+## Empty or NonEmpty?
+Two predicates `Empty` or `NonEmpty`
+
+## Existential predicates
+Existenial predicates like `Forall[P]` and `Exists[P]`, note `P` is a predicate!
+
+## Size predicates
+Predicates like `Size[P]`, `MinSize[N]` and `MaxSize[N]`
 ---
 
 # Built in collection predicates examples
 
 ```scala
-refineV[Empty](List.empty[String])
-// res7: Either[String, Refined[List[String], Empty]] = Right(value = List())
 refineV[NonEmpty](List("test"))
-// res8: Either[String, Refined[List[String], NonEmpty]] = Right(
-//   value = List(test)
-// )
-refineV[Forall[NonEmpty]](List("test"))
-// res9: Either[String, Refined[List[String], Forall[NonEmpty]]] = Right(
+// res7: Either[String, Refined[List[String], NonEmpty]] = Right(
 //   value = List(test)
 // )
 ```
 
 ```scala
-refineV[Empty](List("test"))
-// res10: Either[String, Refined[List[String], Empty]] = Left(
-//   value = "Predicate failed: isEmpty(List(test))."
+refineV[Forall[NonEmpty]](List("test"))
+// res8: Either[String, Refined[List[String], Forall[NonEmpty]]] = Right(
+//   value = List(test)
 // )
+```
+
+---
+
+# Built in collection predicates examples
+
+```scala
 refineV[NonEmpty](List.empty[String])
-// res11: Either[String, Refined[List[String], NonEmpty]] = Left(
+// res9: Either[String, Refined[List[String], NonEmpty]] = Left(
 //   value = "Predicate isEmpty(List()) did not fail."
 // )
+```
+
+```scala
 refineV[Forall[NonEmpty]](List(""))
-// res12: Either[String, Refined[List[String], Forall[NonEmpty]]] = Left(
+// res10: Either[String, Refined[List[String], Forall[NonEmpty]]] = Left(
 //   value = "Predicate failed: (!isEmpty())."
 // )
 ```
 ---
 
-# Built in predicates
+# Predicate operators
 
 [`boolean`](https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala/eu/timepit/refined/boolean.scala)
 
-* `Not[P]`: negation of the predicate `P`
-* `And[A, B]`: conjunction of the predicates `A` and `B`
-* `Or[A, B]`: disjunction of the predicates `A` and `B`
-* `Xor[A, B]`: exclusive disjunction of the predicates `A` and `B`
-* `Nand[A, B]`: negated conjunction of the predicates `A` and `B`
-* `AnyOf[PS]`: disjunction of all predicates in `PS`
+* `Not[P]`: negation
+* `And[A, B]`: conjunction
+* `Or[A, B]`: disjunction
+* `Xor[A, B]`: exclusive disjunction
+* `AnyOf[PS]`: disjunction 
 
 ---
 
@@ -309,22 +374,32 @@ refineV[Forall[NonEmpty]](List(""))
 
 ```scala
 refineV[NonEmpty And Forall[NonEmpty]](List("test"))
-// res13: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Right(
+// res11: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Right(
 //   value = List(test)
-// )
-refineV[AnyOf[Digit :: Letter :: HNil]]('c')
-// res14: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Right(
-//   value = c
 // )
 ```
 
 ```scala
+refineV[AnyOf[Digit :: Letter :: HNil]]('c')
+// res12: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Right(
+//   value = c
+// )
+```
+
+---
+
+# Built in boolean predicates examples
+
+```scala
 refineV[NonEmpty And Forall[NonEmpty]](List.empty[String])
-// res15: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Left(
+// res13: Either[String, Refined[List[String], And[NonEmpty, Forall[NonEmpty]]]] = Left(
 //   value = "Left predicate of (!isEmpty(List()) && ()) failed: Predicate isEmpty(List()) did not fail."
 // )
+```
+
+```scala
 refineV[AnyOf[Digit :: Letter :: HNil]]('#')
-// res16: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Left(
+// res14: Either[String, Refined[Char, AnyOf[Digit :: Letter :: HNil]]] = Left(
 //   value = "Predicate failed: (isDigit('#') || isLetter('#') || false)."
 // )
 ```
@@ -345,7 +420,7 @@ type Email = String Refined MatchesRegex["^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-z
 # Reviewed case class
 
 ```scala
-case class User(
+case class Person(
     id: UUID,
     firstName: NonEmptyString,
     surname: NonEmptyString,
@@ -357,16 +432,58 @@ case class User(
 ```
 ---
 
+class: center, middle
+
+<h1>Job done?</h1>
+
+![img](https://media.giphy.com/media/WZTgoOuIs63QEV8IFn/giphy-downsized.gif)
+
+---
+
+class: center, middle
+
+<h1>What about integrations?</h1>
+
+---
+
 # Integration modules available
 
 For popular JSON, CSV and database libraries!
 
-* [argonaut-refined](https://github.com/alexarchambault/argonaut-shapeless)
 * [circe-refined](https://github.com/circe/circe)
 * [doobie-refined](https://github.com/tpolecat/doobie)
 * [kantan.csv-refined](https://nrinaudo.github.io/kantan.csv/refined.html)
-* [play-refined](https://github.com/kwark/play-refined)
-* [slick-refined](https://github.com/kwark/slick-refined)
+
+
+---
+
+class: center, middle
+
+<h1>Do it yourself!</h1>
+
+![img](https://media.giphy.com/media/wotqBCVmRVn2w/giphy.gif)
+
+---
+
+# Integrate codecs yourself
+
+```scala
+implicit final def refinedDecoder[T, P, F[_, _]](implicit
+    underlying: Decoder[T],
+    validate: Validate[T, P],
+    refType: RefType[F]
+  ): Decoder[F[T, P]] =
+    Decoder.instance { c =>
+      underlying(c) match {
+        case Right(t0) =>
+          refType.refine(t0) match {
+            case Left(err)    => Left(DecodingFailure(err, c.history))
+            case r @ Right(t) => r.asInstanceOf[Decoder.Result[F[T, P]]]
+          }
+        case l @ Left(_) => l.asInstanceOf[Decoder.Result[F[T, P]]]
+      }
+    }
+```
 
 ---
 
@@ -386,14 +503,59 @@ object IbanCode {
 
 ```scala
 refineV[IbanCode]("NL91ABNA0417164300")
-// res17: Either[String, Refined[String, IbanCode]] = Right(
+// res15: Either[String, Refined[String, IbanCode]] = Right(
 //   value = NL91ABNA0417164300
 // )
 refineV[IbanCode]("")
-// res18: Either[String, Refined[String, IbanCode]] = Left(
+// res16: Either[String, Refined[String, IbanCode]] = Left(
 //   value = "IBAN predicate failed: Empty string can't be a valid Iban."
 // )
 ```
+
+---
+
+class: center, middle
+
+<h1>Challenges?</h1>
+
+![img](https://media.giphy.com/media/l41Ym49ppcDP6iY3C/giphy.gif)
+
+---
+
+# Challenges?
+
+### Lots of refined types
+
+Slow compilation performance on projects with lots of refined types in Scala 2.x. **Might be better in Scala 3 or keep projects small**
+
+### Composing refinements
+
+```scala
+type Hostname = NonEmptyString
+type Port = PortNumber
+
+type HostAddress = ??? // What about (NonEmptyString + ":" + PortNumber) ?
+```
+
+**Split it up**
+
+```scala
+final case class HostAddress(name: NonEmptyString, port: PortNumber)
+```
+
+---
+
+# Challenges?
+
+### Operations on refinements
+
+String operations or numeric operations have limited support. **For now use the underlying primitive, when you are pretty sure it's safe** 
+
+
+---
+class: center, middle
+
+<h1>Questions?</h1>
 
 ---
 
@@ -404,6 +566,9 @@ refineV[IbanCode]("")
 
 ### Libraries mentioned
 - refined at [https://github.com/fthomas/refined](https://github.com/fthomas/refined)
+
+
+
 
  </textarea>
     <script src="remark-latest.min.js"></script>
